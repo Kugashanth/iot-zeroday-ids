@@ -1,0 +1,21 @@
+# Runs the full pipeline on synthetic CIC-IoT2023-like data (make synth first).
+inherit: default.yaml
+experiment: synthetic
+
+data:
+  path: data/synthetic
+  time_col: ts                   # synthetic data has time -> natural drift at ts=0.6
+  max_files: null
+  sample_frac: 1.0
+  max_rows_per_family: null
+
+split:
+  mode: random
+
+stream:
+  fit_until: 0.4
+  calibrate_until: 0.5
+  known_drift_time: 0.6
+  window: 1000
+  min_buffer: 3000
+  buffer_size: 8000

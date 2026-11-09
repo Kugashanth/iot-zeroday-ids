@@ -1,0 +1,65 @@
+# Real-data config: CIC-IoT2023 (CSV release, 46 features, 34 labels -> 8 families)
+experiment: cic-iot2023
+seed: 42
+output_dir: runs
+
+data:
+  path: data/CICIoT2023          # folder with part-*.csv files
+  pattern: "*.csv"
+  label_col: label
+  benign_values: []              # extra labels to treat as benign (BenignTraffic is auto-mapped)
+  family_map: {}                 # optional {raw_label: family} overrides
+  time_col: null                 # CIC-IoT2023 CSVs have no timestamp -> drift is simulated
+  drop_cols: []
+  max_files: 20                  # 169 files in total; start small
+  sample_frac: 0.25
+  max_rows_per_family: 200000    # caps the dominant DDoS/DoS classes
+
+preprocess:
+  log1p: true                    # log-transform heavy-tailed non-negative features
+  clip: 10.0                     # clip standardized values
+
+split:
+  mode: random                   # random | chronological (needs time_col)
+  train_frac: 0.6                # of BENIGN rows
+  val_frac: 0.2
+  # Attack families never seen in any form -> the zero-day test.
+  # Families not listed are reported separately as "known families".
+  unknown_families: [Mirai, Web, BruteForce, Spoofing]
+
+threshold:
+  quantile: 0.99                 # 99th pct of benign validation scores (~1% FPR target)
+
+models:
+  - name: iforest
+    params: {n_estimators: 300, max_samples: 1024}
+  - name: ocsvm
+    params: {nu: 0.05, n_components: 300, max_fit: 50000}
+  - name: ae
+    params: {hidden: [128, 64], latent: 16, dropout: 0.1, lr: 0.001, epochs: 60, batch_size: 1024, patience: 6}
+  - name: vae
+    params: {hidden: [128, 64], latent: 16, beta: 0.5, lr: 0.001, epochs: 60, batch_size: 1024, patience: 6}
+  - name: contrastive
+    params: {hidden: [256, 128], latent: 64, corruption: 0.3, temperature: 0.5, k: 5,
+             lr: 0.001, epochs: 40, batch_size: 1024, patience: 5, bank_size: 20000}
+
+stream:
+  model: ae
+  fit_until: 0.4                 # first 40% of benign -> fit
+  calibrate_until: 0.5           # next 10% -> threshold
+  simulate_drift_at: 0.4         # (no time_col) inject drift at 40% of the stream
+  drift_magnitude: 1.5           # std units
+  drift_features: 8
+  known_drift_time: null         # (with time_col) mark a known drift point on plots
+  window: 2000
+  trim_quantile: 0.6
+  detector: adwin                # adwin | page_hinkley
+  delta: 0.002
+  buffer_size: 10000
+  min_buffer: 4000
+  replay_ratio: 0.3
+  cooldown_windows: 5
+  recalib_windows: 3
+
+mlflow:
+  enabled: false

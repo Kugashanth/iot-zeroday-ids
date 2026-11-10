@@ -124,6 +124,10 @@ iotids predict --run runs/<run-dir> --model vae --input new_flows.csv --output s
 docker compose up --build      # runs the demo, then serves the dashboard on :8501
 ```
 
+## 📄 Project report
+
+The full write-up (architecture, methodology, results, worked example and limitations) is in [`docs/report/`](docs/report/): [PDF](docs/report/iot-zeroday-ids_Project_Report.pdf) · [Word](docs/report/iot-zeroday-ids_Project_Report.docx).
+
 ## 🔬 Method
 
 **1. Preprocessing (benign-only fit).** Non-numeric and identifier columns are dropped. `±inf` becomes NaN, then the benign median.
